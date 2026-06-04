@@ -33,12 +33,12 @@ function useHtmlImage(src: string | null) {
   return image;
 }
 
-function getCanvasPoint(stage: Konva.Stage | null): Point | null {
+function getCanvasPoint(stage: Konva.Stage | null, scale: number): Point | null {
   const pointer = stage?.getPointerPosition();
   if (!pointer) return null;
   return {
-    x: pointer.x / VIEW_SCALE - STAGE_PADDING,
-    y: pointer.y / VIEW_SCALE - STAGE_PADDING
+    x: pointer.x / scale - STAGE_PADDING,
+    y: pointer.y / scale - STAGE_PADDING
   };
 }
 
@@ -81,9 +81,21 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
   const stageRef = useRef<Konva.Stage | null>(null);
   const lastHandlePointRef = useRef<Point | null>(null);
   const [activeHandle, setActiveHandle] = useState<HandleName | null>(null);
+  const [stageScale, setStageScale] = useState(VIEW_SCALE);
   const staffImage = useHtmlImage(editor.staffImage?.src ?? null);
   const templateImage = useHtmlImage('/template.png');
   const fillPatchImage = useHtmlImage(editor.fillPatch?.src ?? null);
+
+  useEffect(() => {
+    const updateScale = () => {
+      const availableWidth = window.innerWidth <= 760 ? window.innerWidth - 24 : window.innerWidth - 360;
+      const fitScale = Math.max(0.18, Math.min(VIEW_SCALE, availableWidth / (CANVAS_WIDTH + STAGE_PADDING * 2)));
+      setStageScale(Number(fitScale.toFixed(3)));
+    };
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, []);
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -110,8 +122,9 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
     }));
   }, [editor.mode, staffRect]);
 
-  const onStageMouseDown = () => {
-    const point = getCanvasPoint(stageRef.current);
+  const onStageMouseDown = (event?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    event?.evt.preventDefault();
+    const point = getCanvasPoint(stageRef.current, stageScale);
     if (!point) return;
     if (editor.mode === 'select' && staffRect) {
       const inside =
@@ -124,8 +137,9 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
     if (editor.mode === 'fill') editor.startSelection(point.x, point.y);
   };
 
-  const onStageMouseMove = () => {
-    const point = getCanvasPoint(stageRef.current);
+  const onStageMouseMove = (event?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (activeHandle || editor.mode === 'crop' || editor.mode === 'fill') event?.evt.preventDefault();
+    const point = getCanvasPoint(stageRef.current, stageScale);
     if (!point) return;
     if (activeHandle) {
       const previous = lastHandlePointRef.current;
@@ -143,7 +157,8 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
     if (editor.mode === 'fill') editor.moveSelection(point.x, point.y);
   };
 
-  const onStageMouseUp = () => {
+  const onStageMouseUp = (event?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    event?.evt.preventDefault();
     setActiveHandle(null);
     lastHandlePointRef.current = null;
     if (editor.mode === 'fill') editor.finishSelection();
@@ -154,8 +169,8 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
     <div className="editor-wrap">
       <Stage
         ref={stageRef}
-        width={(CANVAS_WIDTH + STAGE_PADDING * 2) * VIEW_SCALE}
-        height={(CANVAS_HEIGHT + STAGE_PADDING * 2) * VIEW_SCALE}
+        width={(CANVAS_WIDTH + STAGE_PADDING * 2) * stageScale}
+        height={(CANVAS_HEIGHT + STAGE_PADDING * 2) * stageScale}
         onMouseDown={onStageMouseDown}
         onMouseMove={onStageMouseMove}
         onMouseUp={onStageMouseUp}
@@ -163,7 +178,7 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
         onTouchMove={onStageMouseMove}
         onTouchEnd={onStageMouseUp}
       >
-        <Layer scaleX={VIEW_SCALE} scaleY={VIEW_SCALE}>
+        <Layer scaleX={stageScale} scaleY={stageScale}>
           <Rect
             x={0}
             y={0}
@@ -285,7 +300,7 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
             )}
           </Group>
         </Layer>
-        <Layer scaleX={VIEW_SCALE} scaleY={VIEW_SCALE}>
+        <Layer scaleX={stageScale} scaleY={stageScale}>
           <Group x={STAGE_PADDING} y={STAGE_PADDING}>
             <Rect
               x={0}
@@ -293,7 +308,7 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
               stroke="#ff4d4d"
-              strokeWidth={3 / VIEW_SCALE}
+              strokeWidth={3 / stageScale}
               dash={[18, 10]}
               listening={false}
             />
@@ -303,7 +318,7 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
               stroke="#ffffff"
-              strokeWidth={1 / VIEW_SCALE}
+              strokeWidth={1 / stageScale}
               listening={false}
             />
           </Group>
@@ -324,19 +339,19 @@ export function CanvasEditor({ editor }: { editor: ImageEditor }) {
                   key={handle.name}
                   x={handle.x}
                   y={handle.y}
-                  radius={10 / VIEW_SCALE}
+                  radius={10 / stageScale}
                   fill="#f4f7fb"
                   stroke={editor.mode === 'crop' ? '#77c56b' : '#4da3ff'}
-                  strokeWidth={2 / VIEW_SCALE}
+                  strokeWidth={2 / stageScale}
                   onMouseDown={(event) => {
                     event.cancelBubble = true;
-                    const point = getCanvasPoint(stageRef.current);
+                    const point = getCanvasPoint(stageRef.current, stageScale);
                     lastHandlePointRef.current = point ?? { x: handle.x, y: handle.y };
                     setActiveHandle(handle.name);
                   }}
                   onTouchStart={(event) => {
                     event.cancelBubble = true;
-                    const point = getCanvasPoint(stageRef.current);
+                    const point = getCanvasPoint(stageRef.current, stageScale);
                     lastHandlePointRef.current = point ?? { x: handle.x, y: handle.y };
                     setActiveHandle(handle.name);
                   }}

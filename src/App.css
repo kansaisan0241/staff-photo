@@ -21,9 +21,10 @@
 
 body {
   margin: 0;
-  min-width: 1024px;
+  min-width: 0;
   min-height: 100vh;
   background: #171a1f;
+  overscroll-behavior: none;
 }
 
 button,
@@ -59,6 +60,7 @@ input {
   border: 1px solid #424a55;
   box-shadow: 0 14px 50px rgb(0 0 0 / 35%);
   background: #11151a;
+  touch-action: none;
 }
 
 .toolbar {
@@ -74,6 +76,10 @@ input {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.editor-wrap canvas {
+  touch-action: none;
 }
 
 .panel-section {
@@ -204,6 +210,78 @@ input {
 .patch-preview {
   background-size: cover;
   background-position: center;
+}
+
+@media (max-width: 760px) {
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .toolbar {
+    order: -1;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    padding: 14px;
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .toolbar h1 {
+    margin-bottom: 12px;
+    font-size: 17px;
+  }
+
+  .workspace {
+    width: 100%;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .editor-wrap {
+    margin: 0;
+  }
+
+  .panel-section {
+    padding: 12px 0;
+  }
+
+  .file-row {
+    grid-template-columns: minmax(0, 1fr) 58px;
+  }
+
+  .file-input {
+    min-width: 0;
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .btn {
+    min-height: 42px;
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .button-grid {
+    gap: 7px;
+  }
+
+  .drop-hint,
+  .status,
+  .meta-list {
+    font-size: 11px;
+  }
 }
 
 .meta-list {
